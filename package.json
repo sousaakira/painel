@@ -1,6 +1,6 @@
 {
   "name": "painel",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Painel de gerenciamento de servidores LXC Rancher",
   "main": "main.js",
   "homepage": "https://github.com/akira-sousa/painel",
