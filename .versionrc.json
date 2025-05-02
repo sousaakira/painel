@@ -1,0 +1,15 @@
+{
+  "types": [
+    {"type": "feat", "section": "✨ Novas Funcionalidades"},
+    {"type": "fix", "section": "🐛 Correções"},
+    {"type": "docs", "section": "📚 Documentação"},
+    {"type": "style", "section": "💅 Estilos"},
+    {"type": "refactor", "section": "♻️ Refatoração"},
+    {"type": "perf", "section": "⚡ Performance"},
+    {"type": "test", "section": "✅ Testes"},
+    {"type": "build", "section": "👷 Build"},
+    {"type": "ci", "section": "🔧 CI"},
+    {"type": "chore", "section": "📦 Chores"},
+    {"type": "revert", "section": "⏪ Reverts"}
+  ]
+} 

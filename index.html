@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Painel de Servidores</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --success-color: #4CAF50;
+            --warning-color: #FF9800;
+            --danger-color: #f44336;
+            --bg-dark: #1a1a1a;
+            --bg-card: #2d2d2d;
+            --bg-card-hover: #3d3d3d;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: var(--bg-card);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .add-btn {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .add-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .categories-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .category {
+            background-color: var(--bg-card);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .category-title {
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .servers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .server-card {
+            background-color: var(--bg-card);
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .server-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+            border-color: var(--primary-color);
+        }
+
+        .server-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background-color: var(--primary-color);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .server-card:hover::before {
+            opacity: 1;
+        }
+
+        .server-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .server-details {
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            word-break: break-all;
+            font-size: 14px;
+        }
+
+        .server-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .action-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            background-color: #1976D2;
+            transform: translateY(-2px);
+        }
+
+        .delete-btn {
+            background-color: var(--danger-color);
+        }
+
+        .delete-btn:hover {
+            background-color: #d32f2f;
+        }
+
+        .ssh-btn {
+            background-color: var(--warning-color);
+        }
+
+        .ssh-btn:hover {
+            background-color: #F57C00;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: var(--bg-card);
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 50%;
+            max-width: 500px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-server"></i> Painel de Servidores</h1>
+            <button class="add-btn" onclick="openCategoryModal()">
+                <i class="fas fa-plus"></i> Nova Categoria
+            </button>
+        </div>
+        <div class="categories-container" id="categoriesContainer"></div>
+    </div>
+
+    <!-- Modal para adicionar categoria -->
+    <div id="addCategoryModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-folder-plus"></i> Nova Categoria</h2>
+            <div class="form-group">
+                <label for="categoryName">Nome da Categoria</label>
+                <input type="text" id="categoryName" placeholder="Digite o nome da categoria">
+            </div>
+            <div class="modal-buttons">
+                <button class="action-btn" onclick="closeCategoryModal()">Cancelar</button>
+                <button class="action-btn" onclick="addCategory()">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para adicionar servidor -->
+    <div id="addServerModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-plus-circle"></i> Novo Servidor</h2>
+            <div class="form-group">
+                <label for="serverName">Nome do Servidor</label>
+                <input type="text" id="serverName" placeholder="Digite o nome do servidor">
+            </div>
+            <div class="form-group">
+                <label for="serverType">Tipo de Servidor</label>
+                <select id="serverType" onchange="toggleServerFields()">
+                    <option value="web">Web</option>
+                    <option value="ssh">SSH</option>
+                </select>
+            </div>
+            <div id="webFields">
+                <div class="form-group">
+                    <label for="serverUrl">URL do Servidor</label>
+                    <input type="url" id="serverUrl" placeholder="https://exemplo.com">
+                </div>
+            </div>
+            <div id="sshFields" style="display: none;">
+                <div class="form-group">
+                    <label for="sshHost">Host</label>
+                    <input type="text" id="sshHost" placeholder="exemplo.com">
+                </div>
+                <div class="form-group">
+                    <label for="sshUsername">Usuário</label>
+                    <input type="text" id="sshUsername" placeholder="usuario">
+                </div>
+                <div class="form-group">
+                    <label for="sshPort">Porta</label>
+                    <input type="number" id="sshPort" placeholder="22" value="22">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="action-btn" onclick="closeServerModal()">Cancelar</button>
+                <button class="action-btn" onclick="addServer()">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const { shell } = require('electron');
+
+        // Variáveis globais
+        let categories = [];
+        let currentCategoryId = null;
+
+        async function loadCategories() {
+            categories = await ipcRenderer.invoke('get-categories');
+            renderCategories();
+        }
+
+        function renderCategories() {
+            const container = document.getElementById('categoriesContainer');
+            container.innerHTML = categories.map((category, categoryIndex) => `
+                <div class="category">
+                    <div class="category-header">
+                        <div class="category-title">
+                            <i class="fas fa-folder"></i> ${category.name}
+                        </div>
+                        <button class="add-btn" onclick="openServerModal(${categoryIndex})">
+                            <i class="fas fa-plus"></i> Adicionar Servidor
+                        </button>
+                    </div>
+                    <div class="servers-grid">
+                        ${(category.servers || []).map((server, serverIndex) => `
+                            <div class="server-card">
+                                <div class="server-name">
+                                    <i class="fas ${server.type === 'web' ? 'fa-globe' : 'fa-terminal'}"></i>
+                                    ${server.name}
+                                </div>
+                                <div class="server-details">
+                                    ${server.type === 'web' ? 
+                                        `<i class="fas fa-link"></i> ${server.url}` :
+                                        `<i class="fas fa-network-wired"></i> ${server.username}@${server.host}:${server.port}`
+                                    }
+                                </div>
+                                <div class="server-actions">
+                                    ${server.type === 'web' ?
+                                        `<button class="action-btn" onclick="openServer(${categoryIndex}, ${serverIndex})">
+                                            <i class="fas fa-external-link-alt"></i> Abrir
+                                        </button>` :
+                                        `<button class="action-btn ssh-btn" onclick="openTerminal(${categoryIndex}, ${serverIndex})">
+                                            <i class="fas fa-terminal"></i> SSH
+                                        </button>`
+                                    }
+                                    <button class="action-btn delete-btn" onclick="removeServer(${categoryIndex}, ${serverIndex})">
+                                        <i class="fas fa-trash"></i> Remover
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openCategoryModal() {
+            document.getElementById('addCategoryModal').style.display = 'block';
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('addCategoryModal').style.display = 'none';
+        }
+
+        function openServerModal(categoryIndex) {
+            currentCategoryId = categoryIndex;
+            document.getElementById('addServerModal').style.display = 'block';
+        }
+
+        function closeServerModal() {
+            document.getElementById('addServerModal').style.display = 'none';
+            currentCategoryId = null;
+        }
+
+        function toggleServerFields() {
+            const serverType = document.getElementById('serverType').value;
+            document.getElementById('webFields').style.display = serverType === 'web' ? 'block' : 'none';
+            document.getElementById('sshFields').style.display = serverType === 'ssh' ? 'block' : 'none';
+        }
+
+        async function addCategory() {
+            const name = document.getElementById('categoryName').value;
+
+            if (!name) {
+                alert('Por favor, preencha o nome da categoria');
+                return;
+            }
+
+            await ipcRenderer.invoke('add-category', { name, servers: [] });
+            closeCategoryModal();
+            loadCategories();
+        }
+
+        async function addServer() {
+            const name = document.getElementById('serverName').value;
+            const type = document.getElementById('serverType').value;
+
+            if (!name) {
+                alert('Por favor, preencha o nome do servidor');
+                return;
+            }
+
+            let server;
+            if (type === 'web') {
+                const url = document.getElementById('serverUrl').value;
+                if (!url) {
+                    alert('Por favor, preencha a URL do servidor');
+                    return;
+                }
+                server = { name, type, url };
+            } else {
+                const host = document.getElementById('sshHost').value;
+                const username = document.getElementById('sshUsername').value;
+                const port = document.getElementById('sshPort').value;
+                if (!host || !username) {
+                    alert('Por favor, preencha todos os campos do servidor SSH');
+                    return;
+                }
+                server = { name, type, host, username, port: parseInt(port) };
+            }
+
+            await ipcRenderer.invoke('add-server', { categoryIndex: currentCategoryId, server });
+            closeServerModal();
+            loadCategories();
+        }
+
+        async function removeServer(categoryIndex, serverIndex) {
+            if (confirm('Tem certeza que deseja remover este servidor?')) {
+                await ipcRenderer.invoke('remove-server', { categoryIndex, serverIndex });
+                loadCategories();
+            }
+        }
+
+        function openServer(categoryIndex, serverIndex) {
+            const server = categories[categoryIndex].servers[serverIndex];
+            shell.openExternal(server.url);
+        }
+
+        async function openTerminal(categoryIndex, serverIndex) {
+            const server = categories[categoryIndex].servers[serverIndex];
+            await ipcRenderer.invoke('open-terminal', {
+                host: server.host,
+                username: server.username,
+                port: server.port
+            });
+        }
+
+        // Carregar categorias ao iniciar
+        loadCategories();
+    </script>
+</body>
+</html> 
