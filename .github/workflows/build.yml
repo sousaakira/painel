@@ -8,6 +8,8 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
@@ -39,5 +41,8 @@ jobs:
             dist/*.deb
             dist/*.exe
             dist/*.dmg
+          draft: false
+          prerelease: false
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

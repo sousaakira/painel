@@ -9,18 +9,35 @@ let tray = null;
 
 // Função para obter o caminho dos recursos
 function getResourcePath() {
-    return app.isPackaged
+    const resourcePath = app.isPackaged
         ? path.join(process.resourcesPath, 'icons')
         : path.join(__dirname, 'build/icons');
+    console.log('Caminho dos recursos:', resourcePath);
+    return resourcePath;
 }
 
 // Função para criar ícones
 function createIcon(name) {
     const iconPath = path.join(getResourcePath(), `${name}.png`);
-    return nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+    console.log('Criando ícone:', name, 'em:', iconPath);
+    try {
+        const icon = nativeImage.createFromPath(iconPath);
+        if (icon.isEmpty()) {
+            console.error('Erro: Ícone está vazio:', iconPath);
+        } else {
+            console.log('Ícone criado com sucesso:', name);
+        }
+        return icon.resize({ width: 16, height: 16 });
+    } catch (error) {
+        console.error('Erro ao criar ícone:', name, error);
+        return null;
+    }
 }
 
 function createWindow() {
+    const iconPath = path.join(getResourcePath(), 'taskbar.png');
+    console.log('Criando janela com ícone:', iconPath);
+    
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
@@ -30,10 +47,17 @@ function createWindow() {
         },
         titleBarStyle: 'hiddenInset',
         backgroundColor: '#1a1a1a',
-        icon: path.join(getResourcePath(), 'icon.png')
+        icon: iconPath,
+        show: false
     });
 
     mainWindow.loadFile('index.html');
+
+    // Mostrar a janela quando estiver pronta
+    mainWindow.once('ready-to-show', () => {
+        console.log('Janela pronta para mostrar');
+        mainWindow.show();
+    });
 
     // Minimizar para tray ao invés de fechar
     mainWindow.on('close', (event) => {
@@ -46,16 +70,28 @@ function createWindow() {
 }
 
 function createTray() {
+    console.log('Criando tray...');
     const icon = createIcon('icon');
+    if (!icon) {
+        console.error('Não foi possível criar o ícone do tray');
+        return;
+    }
+    
     tray = new Tray(icon);
     tray.setToolTip('Painel de Servidores');
+    console.log('Tray criado com sucesso');
 
     // Atualizar o menu do tray quando os servidores mudarem
     updateTrayMenu();
 
     // Mostrar a janela principal ao clicar no ícone
     tray.on('click', () => {
-        mainWindow.show();
+        if (mainWindow.isVisible()) {
+            mainWindow.hide();
+        } else {
+            mainWindow.show();
+            mainWindow.focus();
+        }
     });
 }
 
@@ -141,15 +177,27 @@ ipcMain.handle('add-category', (event, category) => {
     const categories = store.get('categories', []);
     categories.push(category);
     store.set('categories', categories);
-    updateTrayMenu(); // Atualizar menu do tray
+    updateTrayMenu();
     return categories;
+});
+
+ipcMain.handle('edit-category', async (event, { index, category }) => {
+    try {
+        const categories = await store.get('categories', []);
+        categories[index] = { ...categories[index], ...category };
+        await store.set('categories', categories);
+        return true;
+    } catch (error) {
+        console.error('Erro ao editar categoria:', error);
+        return false;
+    }
 });
 
 ipcMain.handle('remove-category', (event, index) => {
     const categories = store.get('categories') || [];
     categories.splice(index, 1);
     store.set('categories', categories);
-    updateTrayMenu(); // Atualizar menu do tray
+    updateTrayMenu();
     return categories;
 });
 
@@ -166,15 +214,27 @@ ipcMain.handle('add-server', (event, { categoryIndex, server }) => {
     }
     categories[categoryIndex].servers.push(server);
     store.set('categories', categories);
-    updateTrayMenu(); // Atualizar menu do tray
+    updateTrayMenu();
     return categories[categoryIndex].servers;
+});
+
+ipcMain.handle('edit-server', async (event, { categoryIndex, serverIndex, server }) => {
+    try {
+        const categories = await store.get('categories', []);
+        categories[categoryIndex].servers[serverIndex] = server;
+        await store.set('categories', categories);
+        return true;
+    } catch (error) {
+        console.error('Erro ao editar servidor:', error);
+        return false;
+    }
 });
 
 ipcMain.handle('remove-server', (event, { categoryIndex, serverIndex }) => {
     const categories = store.get('categories') || [];
     categories[categoryIndex].servers.splice(serverIndex, 1);
     store.set('categories', categories);
-    updateTrayMenu(); // Atualizar menu do tray
+    updateTrayMenu();
     return categories[categoryIndex].servers;
 });
 
@@ -186,4 +246,14 @@ ipcMain.handle('open-url', (event, url) => {
 ipcMain.handle('open-terminal', (event, { host, username, port }) => {
     const command = `gnome-terminal -- bash -c "ssh ${username}@${host} -p ${port}; exec bash"`;
     exec(command);
+});
+
+// Handlers para gerenciar estados dos collapses
+ipcMain.handle('get-collapsed-states', () => {
+    return store.get('collapsedStates', {});
+});
+
+ipcMain.handle('save-collapsed-states', (event, states) => {
+    store.set('collapsedStates', states);
+    return true;
 }); 

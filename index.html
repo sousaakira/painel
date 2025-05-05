@@ -79,6 +79,24 @@
             margin-bottom: 20px;
             padding-bottom: 15px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+        }
+
+        .category-content {
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .category-content.collapsed {
+            display: none;
+        }
+
+        .category-header .collapse-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .category-header.collapsed .collapse-icon {
+            transform: rotate(-90deg);
         }
 
         .category-title {
@@ -87,6 +105,40 @@
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        .category-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .edit-btn, .remove-btn, .open-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 6px;
+            transition: all 0.3s;
+            color: var(--text-secondary);
+        }
+
+        .edit-btn:hover {
+            background-color: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .remove-btn:hover {
+            background-color: var(--danger-color);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .open-btn:hover {
+            background-color: var(--success-color);
+            color: white;
+            transform: translateY(-2px);
         }
 
         .servers-grid {
@@ -154,7 +206,7 @@
             color: white;
             border: none;
             padding: 8px 16px;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             transition: all 0.3s;
             display: flex;
@@ -219,7 +271,7 @@
         .form-group input, .form-group select {
             width: 100%;
             padding: 10px;
-            border-radius: 4px;
+            border-radius: 6px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             background-color: rgba(255, 255, 255, 0.05);
             color: var(--text-primary);
@@ -237,6 +289,28 @@
             justify-content: flex-end;
             gap: 10px;
             margin-top: 20px;
+        }
+
+        .add-server-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 16px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .add-server-btn:hover {
+            background-color: #1976D2;
+            transform: translateY(-2px);
         }
     </style>
 </head>
@@ -308,6 +382,62 @@
         </div>
     </div>
 
+    <!-- Modal de Edição de Categoria -->
+    <div id="editCategoryModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-edit"></i> Editar Categoria</h2>
+            <form id="editCategoryForm">
+                <input type="hidden" id="editCategoryIndex">
+                <div class="form-group">
+                    <label for="editCategoryName">Nome da Categoria</label>
+                    <input type="text" id="editCategoryName" required>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="action-btn" onclick="closeModal('editCategoryModal')">Cancelar</button>
+                    <button type="submit" class="action-btn">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Edição de Servidor -->
+    <div id="editServerModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-edit"></i> Editar Servidor</h2>
+            <form id="editServerForm">
+                <input type="hidden" id="editServerCategoryIndex">
+                <input type="hidden" id="editServerIndex">
+                <div class="form-group">
+                    <label for="editServerName">Nome do Servidor</label>
+                    <input type="text" id="editServerName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editServerType">Tipo</label>
+                    <select id="editServerType" required onchange="toggleEditServerFields()">
+                        <option value="web">Web</option>
+                        <option value="ssh">SSH</option>
+                    </select>
+                </div>
+                <div class="form-group web-fields">
+                    <label for="editServerUrl">URL</label>
+                    <input type="url" id="editServerUrl">
+                </div>
+                <div class="form-group ssh-fields" style="display: none;">
+                    <label for="editServerHost">Host</label>
+                    <input type="text" id="editServerHost">
+                    <label for="editServerPort">Porta</label>
+                    <input type="number" id="editServerPort" value="22">
+                    <label for="editServerUsername">Usuário</label>
+                    <input type="text" id="editServerUsername">
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="action-btn" onclick="closeModal('editServerModal')">Cancelar</button>
+                    <button type="submit" class="action-btn">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         const { ipcRenderer } = require('electron');
         const { shell } = require('electron');
@@ -315,9 +445,22 @@
         // Variáveis globais
         let categories = [];
         let currentCategoryId = null;
+        let collapsedStates = {};
+
+        // Carregar estados dos collapses
+        async function loadCollapsedStates() {
+            collapsedStates = await ipcRenderer.invoke('get-collapsed-states') || {};
+        }
+
+        // Salvar estado do collapse
+        async function saveCollapsedState(categoryIndex, isCollapsed) {
+            collapsedStates[categoryIndex] = isCollapsed;
+            await ipcRenderer.invoke('save-collapsed-states', collapsedStates);
+        }
 
         async function loadCategories() {
             categories = await ipcRenderer.invoke('get-categories');
+            await loadCollapsedStates();
             renderCategories();
         }
 
@@ -325,42 +468,56 @@
             const container = document.getElementById('categoriesContainer');
             container.innerHTML = categories.map((category, categoryIndex) => `
                 <div class="category">
-                    <div class="category-header">
+                    <div class="category-header ${collapsedStates[categoryIndex] ? 'collapsed' : ''}" onclick="toggleCategory(${categoryIndex})">
                         <div class="category-title">
                             <i class="fas fa-folder"></i> ${category.name}
                         </div>
-                        <button class="add-btn" onclick="openServerModal(${categoryIndex})">
+                        <div class="category-actions">
+                            <i class="fas fa-chevron-down collapse-icon"></i>
+                            <button class="edit-btn" onclick="event.stopPropagation(); editCategory(${categoryIndex})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="remove-btn" onclick="event.stopPropagation(); removeCategory(${categoryIndex})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="category-content ${collapsedStates[categoryIndex] ? 'collapsed' : ''}" id="category-${categoryIndex}">
+                        <div class="servers-grid">
+                            ${(category.servers || []).map((server, serverIndex) => `
+                                <div class="server-card">
+                                    <div class="server-name">
+                                        <i class="fas ${server.type === 'web' ? 'fa-globe' : 'fa-terminal'}"></i>
+                                        ${server.name}
+                                    </div>
+                                    <div class="server-details">
+                                        ${server.type === 'web' ? 
+                                            `<i class="fas fa-link"></i> ${server.url}` :
+                                            `<i class="fas fa-network-wired"></i> ${server.username}@${server.host}:${server.port}`
+                                        }
+                                    </div>
+                                    <div class="server-actions">
+                                        ${server.type === 'web' ?
+                                            `<button class="action-btn" onclick="openServer(${categoryIndex}, ${serverIndex})">
+                                                <i class="fas fa-external-link-alt"></i> Abrir
+                                            </button>` :
+                                            `<button class="action-btn ssh-btn" onclick="openTerminal(${categoryIndex}, ${serverIndex})">
+                                                <i class="fas fa-terminal"></i> SSH
+                                            </button>`
+                                        }
+                                        <button class="action-btn edit-btn" onclick="editServer(${categoryIndex}, ${serverIndex})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="action-btn delete-btn" onclick="removeServer(${categoryIndex}, ${serverIndex})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button class="add-server-btn" onclick="openServerModal(${categoryIndex})">
                             <i class="fas fa-plus"></i> Adicionar Servidor
                         </button>
-                    </div>
-                    <div class="servers-grid">
-                        ${(category.servers || []).map((server, serverIndex) => `
-                            <div class="server-card">
-                                <div class="server-name">
-                                    <i class="fas ${server.type === 'web' ? 'fa-globe' : 'fa-terminal'}"></i>
-                                    ${server.name}
-                                </div>
-                                <div class="server-details">
-                                    ${server.type === 'web' ? 
-                                        `<i class="fas fa-link"></i> ${server.url}` :
-                                        `<i class="fas fa-network-wired"></i> ${server.username}@${server.host}:${server.port}`
-                                    }
-                                </div>
-                                <div class="server-actions">
-                                    ${server.type === 'web' ?
-                                        `<button class="action-btn" onclick="openServer(${categoryIndex}, ${serverIndex})">
-                                            <i class="fas fa-external-link-alt"></i> Abrir
-                                        </button>` :
-                                        `<button class="action-btn ssh-btn" onclick="openTerminal(${categoryIndex}, ${serverIndex})">
-                                            <i class="fas fa-terminal"></i> SSH
-                                        </button>`
-                                    }
-                                    <button class="action-btn delete-btn" onclick="removeServer(${categoryIndex}, ${serverIndex})">
-                                        <i class="fas fa-trash"></i> Remover
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
                     </div>
                 </div>
             `).join('');
@@ -455,6 +612,107 @@
                 username: server.username,
                 port: server.port
             });
+        }
+
+        // Função para editar categoria
+        async function editCategory(index) {
+            const category = categories[index];
+            
+            document.getElementById('editCategoryIndex').value = index;
+            document.getElementById('editCategoryName').value = category.name;
+            
+            document.getElementById('editCategoryModal').style.display = 'block';
+        }
+
+        // Função para editar servidor
+        async function editServer(categoryIndex, serverIndex) {
+            const server = categories[categoryIndex].servers[serverIndex];
+            
+            document.getElementById('editServerCategoryIndex').value = categoryIndex;
+            document.getElementById('editServerIndex').value = serverIndex;
+            document.getElementById('editServerName').value = server.name;
+            document.getElementById('editServerType').value = server.type;
+            
+            if (server.type === 'web') {
+                document.getElementById('editServerUrl').value = server.url;
+            } else {
+                document.getElementById('editServerHost').value = server.host;
+                document.getElementById('editServerPort').value = server.port;
+                document.getElementById('editServerUsername').value = server.username;
+            }
+            
+            toggleEditServerFields();
+            document.getElementById('editServerModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Adicionar handlers para os formulários de edição
+        document.getElementById('editCategoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const index = document.getElementById('editCategoryIndex').value;
+            const name = document.getElementById('editCategoryName').value;
+            
+            await ipcRenderer.invoke('edit-category', { 
+                index: parseInt(index), 
+                category: { name } 
+            });
+            
+            closeModal('editCategoryModal');
+            loadCategories();
+        });
+
+        document.getElementById('editServerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const categoryIndex = parseInt(document.getElementById('editServerCategoryIndex').value);
+            const serverIndex = parseInt(document.getElementById('editServerIndex').value);
+            const type = document.getElementById('editServerType').value;
+            
+            const server = {
+                name: document.getElementById('editServerName').value,
+                type: type
+            };
+            
+            if (type === 'web') {
+                server.url = document.getElementById('editServerUrl').value;
+            } else {
+                server.host = document.getElementById('editServerHost').value;
+                server.port = parseInt(document.getElementById('editServerPort').value);
+                server.username = document.getElementById('editServerUsername').value;
+            }
+            
+            await ipcRenderer.invoke('edit-server', { 
+                categoryIndex, 
+                serverIndex, 
+                server 
+            });
+            
+            closeModal('editServerModal');
+            loadCategories();
+        });
+
+        function toggleEditServerFields() {
+            const type = document.getElementById('editServerType').value;
+            document.querySelectorAll('.web-fields').forEach(el => {
+                el.style.display = type === 'web' ? 'block' : 'none';
+            });
+            document.querySelectorAll('.ssh-fields').forEach(el => {
+                el.style.display = type === 'ssh' ? 'block' : 'none';
+            });
+        }
+
+        // Função para alternar o estado de collapse da categoria
+        async function toggleCategory(categoryIndex) {
+            const header = document.querySelector(`.category-header[onclick="toggleCategory(${categoryIndex})"]`);
+            const content = document.getElementById(`category-${categoryIndex}`);
+            
+            header.classList.toggle('collapsed');
+            content.classList.toggle('collapsed');
+            
+            // Salvar o novo estado
+            await saveCollapsedState(categoryIndex, header.classList.contains('collapsed'));
         }
 
         // Carregar categorias ao iniciar

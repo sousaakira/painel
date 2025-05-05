@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Fundo circular -->
+    <circle cx="256" cy="256" r="256" fill="#2196F3"/>
+    
+    <!-- Ícone de servidor simplificado -->
+    <rect x="128" y="128" width="256" height="256" rx="32" fill="white"/>
+    <rect x="160" y="192" width="192" height="32" rx="16" fill="#2196F3"/>
+    <rect x="160" y="240" width="192" height="32" rx="16" fill="#2196F3"/>
+    <rect x="160" y="288" width="192" height="32" rx="16" fill="#2196F3"/>
+</svg> 
